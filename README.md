@@ -32,3 +32,5 @@ the parser instead of being silently ignored.
 
 The program first analyzes the examples in `test_cases.txt`, then opens an
 interactive prompt. Enter a phrase after `Phrase>` and type `q` to quit.
+For accepted phrases, it also displays a simple plain-language English
+interpretation.
