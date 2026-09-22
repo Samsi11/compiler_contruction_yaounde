@@ -17,13 +17,13 @@ KEYWORDS = {
     "drop": "VERB",
     "block": "VERB",
     "take": "VERB",
-    "Driver": "NOUN",
+    "driver": "NOUN",
     "manager": "NOUN",
     "junction": "NOUN",
     "sala": "NOUN",
     "me": "PRON",
     "you": "PRON",
-    "Le": "PRON",
+    "le": "PRON",
     "for": "PREP",
     "at": "PREP",
     "a": "AUX",
@@ -32,11 +32,23 @@ KEYWORDS = {
     "my": "DET",
     "mon": "DET",
     "ma": "DET",
-    "Bendskin": "SLANG",
+    "and": "CONJ",
+    "but": "CONJ",
+    "big": "ADJ",
+    "small": "ADJ",
+    "fast": "ADJ",
+    "bendskin": "SLANG",
 }
 
 
 def tokenize(sentence: str) -> list[Token]:
-    """Convert whitespace-separated words into classified tokens."""
-    words = re.findall(r"[A-Za-z]+(?:'[A-Za-z]+)?", sentence)
-    return [Token(KEYWORDS.get(word, "WORD"), word) for word in words]
+    """Convert input into tokens without silently discarding invalid text."""
+    parts = re.findall(r"[A-Za-z]+(?:'[A-Za-z]+)?|[^\s]", sentence)
+    tokens = []
+    for part in parts:
+        lookup = part.lower()
+        kind = KEYWORDS.get(lookup, "WORD")
+        if not part[0].isalpha() and part[0] != "'":
+            kind = "INVALID"
+        tokens.append(Token(kind, part))
+    return tokens

@@ -4,17 +4,23 @@ from lexer import Token
 
 
 GRAMMAR = {
-    "S": (("NP", "VP"),),
+    "S": (
+        ("NP", "VP"),
+        ("NP", "VP", "CONJ", "S"),
+    ),
     "NP": (
         ("NOUN",),
         ("PRON",),
         ("PRON", "NOUN"),
         ("DET", "NOUN"),
+        ("DET", "ADJ", "NOUN"),
+        ("ADJ", "NOUN"),
         ("SLANG", "NOUN"),
     ),
     "VP": (
         ("VERB", "NP"),
         ("VERB", "NP", "PP"),
+        ("VERB", "NP", "PP", "PP"),
         ("AUX", "VERB", "NP"),
     ),
     "PP": (("PREP", "NP"),),
@@ -32,11 +38,19 @@ def parse(tokens: list[Token]) -> ParseResult:
     if not tokens:
         return ParseResult(False, "Syntax Error: empty input [Rejected]")
 
+    memo: dict[tuple[str, int], set[int]] = {}
+
     def match(symbol: str, position: int) -> set[int]:
+        key = (symbol, position)
+        if key in memo:
+            return memo[key]
         if symbol not in GRAMMAR:
             if position < len(tokens) and tokens[position].kind == symbol:
-                return {position + 1}
-            return set()
+                result = {position + 1}
+            else:
+                result = set()
+            memo[key] = result
+            return result
 
         results: set[int] = set()
         for production in GRAMMAR[symbol]:
@@ -47,14 +61,19 @@ def parse(tokens: list[Token]) -> ParseResult:
                     next_positions.update(match(part, current))
                 positions = next_positions
             results.update(positions)
+        memo[key] = results
         return results
 
     if len(tokens) not in match("S", 0):
-        token = tokens[-1]
+        invalid = next((token for token in tokens if token.kind == "INVALID"), None)
+        token = invalid or tokens[-1]
+        if invalid:
+            detail = "invalid character"
+        else:
+            detail = "does not match the CFG"
         return ParseResult(
             False,
-            f"Syntax Error near token '{token.value}' "
-            f"(does not match the CFG) [Rejected]",
+            f"Syntax Error near token '{token.value}' ({detail}) [Rejected]",
         )
 
     return ParseResult(True, "Syntax Valid (Accepted by CFG)")

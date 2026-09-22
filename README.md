@@ -20,10 +20,15 @@ and reports whether each sentence matches this grammar:
 
 ```text
 S  -> NP VP
-NP -> NOUN | PRON | PRON NOUN | DET NOUN | SLANG NOUN
-VP -> VERB NP | VERB NP PP | AUX VERB NP
+S  -> NP VP CONJ S
+NP -> NOUN | PRON | PRON NOUN | DET NOUN | DET ADJ NOUN | ADJ NOUN | SLANG NOUN
+VP -> VERB NP | VERB NP PP | VERB NP PP PP | AUX VERB NP
 PP -> PREP NP
 ```
+
+Keywords are matched case-insensitively. Unknown words are reported as `WORD`,
+while punctuation and other invalid characters are preserved and rejected by
+the parser instead of being silently ignored.
 
 The program first analyzes the examples in `test_cases.txt`, then opens an
 interactive prompt. Enter a phrase after `Phrase>` and type `q` to quit.
