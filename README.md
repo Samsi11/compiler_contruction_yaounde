@@ -9,7 +9,18 @@ It demonstrates lexical analysis and context-free grammar parsing.
 
 ## Run
 
-From this folder, run:
+From this folder, open the desktop interface with:
+
+```powershell
+py gui.py
+```
+
+The interface lets you enter a phrase or choose an example, analyze it with
+the button or Ctrl+Enter, and inspect the parser result, plain-language
+interpretation (for accepted phrases), and token table. It uses Tkinter,
+which is included with most Python desktop installations.
+
+To use the original command-line interface instead, run:
 
 ```powershell
 py main.py
