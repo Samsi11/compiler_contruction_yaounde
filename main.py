@@ -1,7 +1,22 @@
 """Command-line entry point for the Yaounde Urban Language Analyzer."""
 
+import sys
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding="utf-8")
+
+from analysis import analyze_corpus, format_report
+from grammar import (
+    FIRST,
+    FOLLOW,
+    LL1_GRAMMAR,
+    NO_LEFT_RECURSION_GRAMMAR,
+    RAW_GRAMMAR,
+    TABLE,
+    format_grammar,
+    format_sets,
+    format_table,
+)
 from lexer import tokenize
 from parser import parse
 
@@ -41,14 +56,45 @@ def translate_to_plain_language(sentence: str) -> str:
 
 def analyze(sentence: str) -> None:
     tokens = tokenize(sentence)
-    token_pairs = [token.as_tuple() for token in tokens]
+    token_rows = [(t.value, t.kind, t.lang) for t in tokens]
     result = parse(tokens)
-    print(f"  Tokens: {token_pairs}")
+    print(f"  Tokens: {token_rows}")
     print(f"  Result: {result.message}")
     if result.accepted:
         print(f"  Plain language: {translate_to_plain_language(sentence)}")
     else:
         print("  Plain language: Unable to translate an invalid phrase.")
+
+
+def print_grammar_pipeline() -> None:
+    print("=== Grammar pipeline ===")
+    print()
+    print("1. Raw CFG (as derived from collected sentence patterns):")
+    print(format_grammar(RAW_GRAMMAR))
+    print()
+    print("2. After left-recursion elimination:")
+    print(format_grammar(NO_LEFT_RECURSION_GRAMMAR))
+    print()
+    print("3. After left-factoring (LL(1)-ready grammar):")
+    print(format_grammar(LL1_GRAMMAR))
+    print()
+    print("4. FIRST sets:")
+    print(format_sets(FIRST))
+    print()
+    print("5. FOLLOW sets:")
+    print(format_sets(FOLLOW))
+    print()
+    print("6. LL(1) parsing table:")
+    print(format_table(TABLE))
+    print()
+
+
+def print_corpus_stats(sentences: list[str]) -> None:
+    print("=== Token frequency & variation analysis ===")
+    print()
+    report = analyze_corpus(sentences)
+    print(format_report(report))
+    print()
 
 
 def interactive_mode() -> None:
@@ -77,6 +123,11 @@ def main() -> None:
         if line.strip() and not line.lstrip().startswith("#")
     ]
 
+    print_grammar_pipeline()
+    print_corpus_stats(sentences)
+
+    print("=== Parsing test cases ===")
+    print()
     for number, sentence in enumerate(sentences, start=1):
         print(f"Test Case {number}: '{sentence}'")
         analyze(sentence)

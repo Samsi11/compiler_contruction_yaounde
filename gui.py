@@ -3,6 +3,7 @@
 import tkinter as tk
 from tkinter import ttk
 
+from grammar import FIRST, FOLLOW, LL1_GRAMMAR, RAW_GRAMMAR, TABLE, format_grammar, format_sets, format_table
 from lexer import tokenize
 from main import BASE_DIR, translate_to_plain_language
 from parser import parse
@@ -71,6 +72,9 @@ class AnalyzerWindow:
         tk.Button(actions, text="Clear", command=self.clear, bg=SURFACE, fg=MUTED,
                   activebackground=BACKGROUND, relief="flat", cursor="hand2",
                   font=("Segoe UI", 10), padx=14, pady=10).pack(side="left", padx=8)
+        tk.Button(actions, text="Grammar info", command=self.show_grammar_info,
+                  bg=SURFACE, fg=ACCENT, activebackground=BACKGROUND, relief="flat",
+                  cursor="hand2", font=("Segoe UI", 10), padx=14, pady=10).pack(side="left")
         tk.Label(editor, text="Ctrl+Enter to analyze", bg=SURFACE, fg=MUTED,
                  font=("Segoe UI", 9)).grid(row=3, column=0, sticky="w", pady=(15, 0))
 
@@ -94,7 +98,8 @@ class AnalyzerWindow:
                            highlightbackground=BORDER, highlightthickness=1)
         results.grid(row=2, column=0, columnspan=2, sticky="nsew")
         results.columnconfigure(0, weight=1)
-        results.rowconfigure(4, weight=1)
+        results.rowconfigure(4, weight=2)
+        results.rowconfigure(5, weight=1)
         tk.Label(results, text="ANALYSIS", bg=SURFACE, fg=MUTED,
                  font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w")
         self.status = tk.Label(results, text="Ready to analyze", bg=SURFACE, fg=INK,
@@ -116,16 +121,31 @@ class AnalyzerWindow:
         token_frame.rowconfigure(1, weight=1)
         tk.Label(token_frame, text="TOKENS", bg=SURFACE, fg=MUTED,
                  font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 9))
-        self.tokens = ttk.Treeview(token_frame, columns=("position", "value", "kind"),
+        self.tokens = ttk.Treeview(token_frame, columns=("position", "value", "kind", "lang"),
                                    show="headings", style="Tokens.Treeview", height=5)
-        for column, title, width in (("position", "#", 55), ("value", "Word", 280),
-                                     ("kind", "Token type", 180)):
+        for column, title, width in (("position", "#", 55), ("value", "Word", 240),
+                                     ("kind", "Token type", 150), ("lang", "Language", 100)):
             self.tokens.heading(column, text=title, anchor="w")
             self.tokens.column(column, width=width, minwidth=50, stretch=column != "position")
         self.tokens.grid(row=1, column=0, sticky="nsew")
         scrollbar = ttk.Scrollbar(token_frame, orient="vertical", command=self.tokens.yview)
         scrollbar.grid(row=1, column=1, sticky="ns")
         self.tokens.configure(yscrollcommand=scrollbar.set)
+
+        trace_frame = tk.Frame(results, bg=SURFACE)
+        trace_frame.grid(row=5, column=0, sticky="nsew", pady=(14, 0))
+        trace_frame.columnconfigure(0, weight=1)
+        trace_frame.rowconfigure(1, weight=1)
+        tk.Label(trace_frame, text="LL(1) PARSE TRACE", bg=SURFACE, fg=MUTED,
+                 font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 9))
+        self.trace_text = tk.Text(trace_frame, height=6, wrap="none", relief="flat",
+                                  bg="#f6f9f8", fg=INK, font=("Consolas", 9), padx=10, pady=8,
+                                  highlightbackground=BORDER, highlightthickness=1, state="disabled")
+        self.trace_text.grid(row=1, column=0, sticky="nsew")
+        trace_scroll = ttk.Scrollbar(trace_frame, orient="vertical", command=self.trace_text.yview)
+        trace_scroll.grid(row=1, column=1, sticky="ns")
+        self.trace_text.configure(yscrollcommand=trace_scroll.set)
+
         self.input.focus_set()
 
     def load_example(self, _event: tk.Event) -> None:
@@ -140,7 +160,33 @@ class AnalyzerWindow:
         self.detail.configure(text="Choose an example or enter a phrase above.")
         self.translation.grid_remove()
         self.tokens.delete(*self.tokens.get_children())
+        self._set_trace_text("")
         self.input.focus_set()
+
+    def _set_trace_text(self, text: str) -> None:
+        self.trace_text.configure(state="normal")
+        self.trace_text.delete("1.0", "end")
+        self.trace_text.insert("1.0", text)
+        self.trace_text.configure(state="disabled")
+
+    def show_grammar_info(self) -> None:
+        window = tk.Toplevel(self.root)
+        window.title("Grammar pipeline")
+        window.geometry("760x600")
+        window.configure(bg=BACKGROUND)
+        text = tk.Text(window, wrap="none", bg=SURFACE, fg=INK, font=("Consolas", 10), padx=16, pady=16)
+        text.pack(fill="both", expand=True)
+        sections = [
+            ("Raw CFG", format_grammar(RAW_GRAMMAR)),
+            ("LL(1)-ready grammar (after left-recursion removal + left-factoring)",
+             format_grammar(LL1_GRAMMAR)),
+            ("FIRST sets", format_sets(FIRST)),
+            ("FOLLOW sets", format_sets(FOLLOW)),
+            ("LL(1) parsing table", format_table(TABLE)),
+        ]
+        content = "\n\n".join(f"=== {title} ===\n{body}" for title, body in sections)
+        text.insert("1.0", content)
+        text.configure(state="disabled")
 
     def analyze_phrase(self, _event: tk.Event | None = None) -> str:
         sentence = self.input.get("1.0", "end-1c").strip()
@@ -148,7 +194,7 @@ class AnalyzerWindow:
         result = parse(tokens)
         self.tokens.delete(*self.tokens.get_children())
         for position, token in enumerate(tokens, start=1):
-            self.tokens.insert("", "end", values=(position, token.value, token.kind))
+            self.tokens.insert("", "end", values=(position, token.value, token.kind, token.lang))
         self.status.configure(text="Accepted" if result.accepted else "Rejected",
                               fg=ACCENT if result.accepted else "#a44237")
         self.detail.configure(text=result.message)
@@ -157,6 +203,13 @@ class AnalyzerWindow:
             self.translation.grid()
         else:
             self.translation.grid_remove()
+
+        trace_lines = []
+        for step in result.trace:
+            stack_str = " ".join(step.stack)
+            input_str = " ".join(step.remaining_input)
+            trace_lines.append(f"{stack_str:<40} | {input_str:<30} | {step.action}")
+        self._set_trace_text("\n".join(trace_lines))
         return "break"
 
 
