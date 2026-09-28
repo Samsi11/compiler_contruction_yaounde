@@ -35,10 +35,15 @@ def test_entries(entries: list[Entry] | None = None) -> list[Entry]:
     return [e for e in (entries or load_corpus()) if e.expected in ("ACCEPT", "REJECT")]
 
 
+def find_entry(text: str) -> Entry | None:
+    """The corpus entry with this exact text (parsed entries win over excluded ones)."""
+    wanted = " ".join(text.split()).lower()
+    entries = load_corpus()
+    ordered = sorted(entries, key=lambda e: e.expected not in ("ACCEPT", "REJECT"))
+    return next((e for e in ordered if " ".join(e.text.split()).lower() == wanted), None)
+
+
 def gloss_for(text: str) -> str | None:
     """The contributor's own plain-English translation, if this text is in the corpus."""
-    wanted = " ".join(text.split()).lower()
-    for entry in load_corpus():
-        if entry.gloss and " ".join(entry.text.split()).lower() == wanted:
-            return entry.gloss
-    return None
+    entry = find_entry(text)
+    return entry.gloss if entry and entry.gloss else None

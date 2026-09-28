@@ -3,7 +3,7 @@
 A literal implementation of the stack-based LL(1) algorithm: at each step it
 looks up ``grammar.TABLE[(top_of_stack, next_input_symbol)]`` to decide which
 production to expand, and matches terminals against the token kinds produced
-by the lexer.
+by the lexer. While parsing it also builds the derivation (parse) tree.
 """
 
 from dataclasses import dataclass, field
@@ -27,11 +27,19 @@ class ParseStep:
 
 
 @dataclass
+class TreeNode:
+    symbol: str
+    token: Token | None = None
+    children: list["TreeNode"] = field(default_factory=list)
+
+
+@dataclass
 class ParseResult:
     accepted: bool
     message: str
     trace: list[ParseStep] = field(default_factory=list)
-    error_token: Token | None = None
+    error_index: int | None = None
+    tree: TreeNode | None = None
 
 
 def _describe(token: Token) -> str:
@@ -56,7 +64,7 @@ def _reject(tokens: list[Token], position: int, expected: list[str], trace: list
         f"Syntax Error near token '{token.value}' ({_describe(token)}; "
         f"expected one of: {expected_text}) [Rejected]",
         trace,
-        token,
+        position,
     )
 
 
@@ -66,7 +74,9 @@ def parse(tokens: list[Token]) -> ParseResult:
         return ParseResult(False, "Syntax Error: empty input [Rejected]")
 
     input_symbols = [token.kind for token in tokens] + [END_MARKER]
+    root = TreeNode(START_SYMBOL)
     stack: list[str] = [END_MARKER, START_SYMBOL]
+    nodes: list[TreeNode | None] = [None, root]
     trace: list[ParseStep] = []
     position = 0
 
@@ -77,12 +87,13 @@ def parse(tokens: list[Token]) -> ParseResult:
 
         if top == END_MARKER and current == END_MARKER:
             trace[-1].action = "accept"
-            return ParseResult(True, "Syntax Valid (Accepted by CFG)", trace)
+            return ParseResult(True, "Syntax Valid (Accepted by CFG)", trace, tree=root)
 
         if top not in LL1_GRAMMAR:
             if top == current:
                 trace[-1].action = f"match {top}"
                 stack.pop()
+                nodes.pop().token = tokens[position]
                 position += 1
                 continue
             trace[-1].action = "error"
@@ -95,7 +106,11 @@ def parse(tokens: list[Token]) -> ParseResult:
 
         trace[-1].action = f"{top} -> {' '.join(production) if production else EPSILON}"
         stack.pop()
-        for symbol in reversed(production):
-            stack.append(symbol)
+        node = nodes.pop()
+        node.children = [TreeNode(symbol) for symbol in production] or [TreeNode(EPSILON)]
+        if production:
+            for symbol, child in zip(reversed(production), reversed(node.children)):
+                stack.append(symbol)
+                nodes.append(child)
 
     return ParseResult(False, "Syntax Error: parser stack exhausted [Rejected]", trace)
