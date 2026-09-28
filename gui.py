@@ -98,7 +98,7 @@ class AnalyzerWindow:
         self.entries = test_entries()
         self.last_result = None
         root.title("Yaoundé | Urban Language Analyzer")
-        width = min(1120, root.winfo_screenwidth() - 80)
+        width = min(1240, root.winfo_screenwidth() - 60)
         height = min(840, root.winfo_screenheight() - 100)
         root.geometry(f"{width}x{height}+30+10")
         root.minsize(900, 640)
@@ -107,8 +107,8 @@ class AnalyzerWindow:
 
         container = tk.Frame(root, bg=BACKGROUND, padx=30, pady=14)
         container.pack(fill="both", expand=True)
-        container.columnconfigure(0, weight=2, minsize=440)
-        container.columnconfigure(1, weight=3)
+        container.columnconfigure(0, weight=0, minsize=410)
+        container.columnconfigure(1, weight=1)
         container.rowconfigure(1, weight=1)
 
         self._build_header(container)
@@ -160,7 +160,7 @@ class AnalyzerWindow:
         editor.columnconfigure(0, weight=1)
         tk.Label(editor, text="PHRASE", bg=SURFACE, fg=MUTED,
                  font=(UI, 10, "bold")).grid(row=0, column=0, sticky="w")
-        self.input = tk.Text(editor, height=2, wrap="word", relief="flat", undo=True,
+        self.input = tk.Text(editor, height=2, width=28, wrap="word", relief="flat", undo=True,
                              bg="#f6f9f8", fg=INK, insertbackground=INK, font=(UI, 14),
                              padx=12, pady=10, highlightbackground=BORDER, highlightthickness=1)
         self.input.grid(row=1, column=0, sticky="ew", pady=(8, 12))
@@ -185,7 +185,7 @@ class AnalyzerWindow:
         flat_button(nav, "‹ Prev", lambda: self.step_example(-1), compact=True).pack(side="left")
         flat_button(nav, "Next ›", lambda: self.step_example(1), compact=True).pack(side="left", padx=(6, 0))
         self.example = ttk.Combobox(panel, values=[f"{e.id}   {e.text}" for e in self.entries],
-                                    state="readonly", style="Examples.TCombobox", font=(UI, 10))
+                                    state="readonly", width=34, style="Examples.TCombobox", font=(UI, 10))
         self.example.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         self.example.bind("<<ComboboxSelected>>", self.load_example)
 
@@ -228,7 +228,7 @@ class AnalyzerWindow:
         for lang in ("EN", "FR", "PDG", "SLG", "UNK"):
             tk.Label(legend, text=LANG_NAMES[lang], bg=LANG_COLORS[lang], fg=INK, font=(UI, 9),
                      padx=6, pady=2).pack(side="left", padx=(0, 4))
-        tk.Label(legend, text="Stopped here", bg=ERROR_ROW, fg=INK, font=(UI, 9),
+        tk.Label(legend, text="Error", bg=ERROR_ROW, fg=INK, font=(UI, 9),
                  padx=6, pady=2).pack(side="left")
         frame, self.tokens = scrolled_tree(tab, columns=("position", "value", "kind", "lang"),
                                            show="headings", style="Tokens.Treeview", height=6)
@@ -265,8 +265,8 @@ class AnalyzerWindow:
         frame, self.trace = scrolled_tree(tab, horizontal=True, columns=("step", "stack", "input", "action"),
                                           show="headings", style="Trace.Treeview", height=6)
         frame.grid(row=1, column=0, sticky="nsew")
-        for column, title, width in (("step", "Step", 45), ("stack", "Stack", 235),
-                                     ("input", "Remaining input", 135), ("action", "Action", 165)):
+        for column, title, width in (("step", "Step", 42), ("stack", "Stack", 215),
+                                     ("input", "Remaining input", 170), ("action", "Action", 195)):
             self.trace.heading(column, text=title, anchor="w")
             self.trace.column(column, width=width, minwidth=50, stretch=False)
         self.tabs.add(tab, text="Parse trace")
