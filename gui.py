@@ -107,18 +107,18 @@ class AnalyzerWindow:
 
         container = tk.Frame(root, bg=BACKGROUND, padx=30, pady=14)
         container.pack(fill="both", expand=True)
-        container.columnconfigure(0, weight=0, minsize=410)
-        container.columnconfigure(1, weight=1)
+        container.columnconfigure(0, weight=1)
         container.rowconfigure(1, weight=1)
 
         self._build_header(container)
-        left = tk.Frame(container, bg=BACKGROUND)
-        left.grid(row=1, column=0, sticky="nsew", padx=(0, 14))
-        left.columnconfigure(0, weight=1)
-        left.rowconfigure(2, weight=1)
-        self._build_editor(left)
-        self._build_examples(left)
-        self._build_results(container, left)
+
+        self.sections = ttk.Notebook(container)
+        self.sections.grid(row=1, column=0, sticky="nsew")
+        self._build_analyzer_section()
+        self._build_results_section()
+        self._build_statistics_section()
+        self._build_grammar_section()
+
         self.input.focus_set()
 
     def _configure_styles(self) -> None:
@@ -132,27 +132,43 @@ class AnalyzerWindow:
             style.map(f"{name}.Treeview", background=[("selected", "#d7eee8")],
                       foreground=[("selected", INK)])
         style.configure("Examples.TCombobox", padding=7)
-        style.configure("TNotebook", background=SURFACE, borderwidth=0)
+        style.configure("TNotebook", background=BACKGROUND, borderwidth=0)
         style.configure("TNotebook.Tab", padding=(16, 8), font=(UI, 10))
         style.map("TNotebook.Tab", background=[("selected", SURFACE)],
                   foreground=[("selected", ACCENT)], expand=[("selected", (0, 0, 0, 0))])
+        style.configure("Sections.TNotebook", background=BACKGROUND, borderwidth=0)
+        style.configure("Sections.TNotebook.Tab", padding=(18, 10), font=(UI, 11, "bold"))
+        style.map("Sections.TNotebook.Tab", background=[("selected", SURFACE)],
+                  foreground=[("selected", ACCENT), ("!selected", MUTED)])
 
     def _build_header(self, container: tk.Frame) -> None:
         header = tk.Frame(container, bg=BACKGROUND)
-        header.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        header.columnconfigure(0, weight=1)
-        titles = tk.Frame(header, bg=BACKGROUND)
-        titles.grid(row=0, column=0, sticky="w")
-        tk.Label(titles, text="YAOUNDÉ  /  LANGUAGE TOOLS", bg=BACKGROUND, fg=ACCENT,
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        tk.Label(header, text="YAOUNDÉ  /  LANGUAGE TOOLS", bg=BACKGROUND, fg=ACCENT,
                  font=(UI, 10, "bold")).pack(anchor="w")
-        tk.Label(titles, text="Urban Language Analyzer", bg=BACKGROUND, fg=INK,
+        tk.Label(header, text="Urban Language Analyzer", bg=BACKGROUND, fg=INK,
                  font=("Segoe UI Semibold", 21)).pack(anchor="w", pady=(2, 0))
-        tools = tk.Frame(header, bg=BACKGROUND)
-        tools.grid(row=0, column=1, sticky="ne")
-        for text, command in (("All results", self.show_results),
-                              ("Statistics", self.show_statistics),
-                              ("Grammar & LL(1) table", self.show_grammar)):
-            flat_button(tools, text, command).pack(side="left", padx=(8, 0))
+
+    # ---- top-level sections (all inside one window, as notebook tabs) --
+
+    def _section_tab(self, title: str) -> tk.Frame:
+        tab = tk.Frame(self.sections, bg=BACKGROUND)
+        self.sections.add(tab, text=title)
+        return tab
+
+    def _build_analyzer_section(self) -> None:
+        tab = self._section_tab("Analyzer")
+        tab.columnconfigure(0, weight=0, minsize=410)
+        tab.columnconfigure(1, weight=1)
+        tab.rowconfigure(0, weight=1)
+
+        left = tk.Frame(tab, bg=BACKGROUND)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 14), pady=(14, 0))
+        left.columnconfigure(0, weight=1)
+        left.rowconfigure(2, weight=1)
+        self._build_editor(left)
+        self._build_examples(left)
+        self._build_results(tab, left)
 
     def _build_editor(self, container: tk.Frame) -> None:
         editor = card(container)
@@ -210,7 +226,7 @@ class AnalyzerWindow:
         self.translation.grid_remove()
 
         right = card(container)
-        right.grid(row=1, column=1, sticky="nsew")
+        right.grid(row=0, column=1, sticky="nsew", pady=(14, 0))
         right.columnconfigure(0, weight=1)
         right.rowconfigure(0, weight=1)
         self.tabs = ttk.Notebook(right)
@@ -271,7 +287,7 @@ class AnalyzerWindow:
             self.trace.column(column, width=width, minwidth=50, stretch=False)
         self.tabs.add(tab, text="Parse trace")
 
-    # ---- actions -------------------------------------------------------
+    # ---- analyzer actions -----------------------------------------------
 
     def load_example(self, _event: tk.Event | None = None) -> None:
         index = self.example.current()
@@ -361,29 +377,25 @@ class AnalyzerWindow:
         for child in visible_children(node, hide_helpers):
             self._insert_node(item, child, hide_helpers)
 
-    # ---- secondary windows --------------------------------------------
+    # ---- "All results" section (built once; jumps back to Analyzer) ----
 
-    def _toplevel(self, title: str, size: str) -> tk.Toplevel:
-        window = tk.Toplevel(self.root)
-        window.title(title)
-        window.geometry(size)
-        window.configure(bg=BACKGROUND)
-        return window
+    def _build_results_section(self) -> None:
+        tab = self._section_tab("All results")
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(1, weight=1)
 
-    def show_results(self) -> None:
-        window = self._toplevel("Results for every collected utterance",
-                                f"{min(1500, self.root.winfo_screenwidth() - 40)}x680")
         rows = []
         for index, entry in enumerate(self.entries):
             result = parse(tokenize(entry.text))
             rows.append((index, entry, result))
         accepted = sum(r.accepted for _, _, r in rows)
-        tk.Label(window, text=f"{accepted} accepted, {len(rows) - accepted} rejected "
-                 f"of {len(rows)} collected utterances. Double-click a row to open it.",
-                 bg=BACKGROUND, fg=INK, font=(UI, 11), anchor="w").pack(fill="x", padx=20, pady=(16, 8))
-        frame, tree = scrolled_tree(window, columns=("id", "topic", "text", "result", "note"),
+        tk.Label(tab, text=f"{accepted} accepted, {len(rows) - accepted} rejected "
+                 f"of {len(rows)} collected utterances. Double-click a row to open it in the Analyzer tab.",
+                 bg=BACKGROUND, fg=INK, font=(UI, 11), anchor="w").grid(
+            row=0, column=0, sticky="ew", padx=4, pady=(14, 8))
+        frame, tree = scrolled_tree(tab, columns=("id", "topic", "text", "result", "note"),
                                     show="headings", style="Tokens.Treeview")
-        frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        frame.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 4))
         for column, title, width in (("id", "ID", 55), ("topic", "Topic", 110),
                                      ("text", "Utterance", 330), ("result", "Result", 90),
                                      ("note", "Why / note", 900)):
@@ -401,35 +413,43 @@ class AnalyzerWindow:
             if selected:
                 self.example.current(int(selected[0]))
                 self.load_example()
-                self.root.lift()
+                self.sections.select(0)
 
         tree.bind("<Double-1>", open_selected)
 
-    def show_statistics(self) -> None:
-        window = self._toplevel("Token frequency and variation", "820x760")
-        text = tk.Text(window, wrap="none", bg=SURFACE, fg=INK, font=MONO, padx=18, pady=16,
+    # ---- "Statistics" section (built once; static corpus) --------------
+
+    def _build_statistics_section(self) -> None:
+        tab = self._section_tab("Statistics")
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(0, weight=1)
+        text = tk.Text(tab, wrap="none", bg=SURFACE, fg=INK, font=MONO, padx=18, pady=16,
                        relief="flat")
-        text.pack(fill="both", expand=True, padx=20, pady=20)
+        text.grid(row=0, column=0, sticky="nsew", padx=4, pady=(14, 4))
         text.insert("1.0", format_report(analyze_corpus(self.entries)))
         text.configure(state="disabled")
 
-    def show_grammar(self) -> None:
-        window = self._toplevel("Grammar and LL(1) parsing table", "1240x720")
-        notebook = ttk.Notebook(window)
-        notebook.pack(fill="both", expand=True, padx=20, pady=20)
+    # ---- "Grammar & LL(1) table" section (built once; static grammar) --
+
+    def _build_grammar_section(self) -> None:
+        tab = self._section_tab("Grammar & LL(1) table")
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(0, weight=1)
+        notebook = ttk.Notebook(tab)
+        notebook.grid(row=0, column=0, sticky="nsew", padx=4, pady=(14, 4))
 
         def text_tab(title: str, caption: str, body: str) -> None:
-            tab = tk.Frame(notebook, bg=SURFACE, padx=16, pady=14)
-            tab.columnconfigure(0, weight=1)
-            tab.rowconfigure(1, weight=1)
-            tk.Label(tab, text=caption, bg=SURFACE, fg=MUTED, font=(UI, 10), wraplength=1100,
+            sub = tk.Frame(notebook, bg=SURFACE, padx=16, pady=14)
+            sub.columnconfigure(0, weight=1)
+            sub.rowconfigure(1, weight=1)
+            tk.Label(sub, text=caption, bg=SURFACE, fg=MUTED, font=(UI, 10), wraplength=1100,
                      justify="left", anchor="w").grid(row=0, column=0, sticky="ew", pady=(0, 10))
-            text = tk.Text(tab, wrap="none", bg="#f6f9f8", fg=INK, font=MONO, padx=14, pady=12,
-                           relief="flat")
-            text.grid(row=1, column=0, sticky="nsew")
-            text.insert("1.0", body)
-            text.configure(state="disabled")
-            notebook.add(tab, text=title)
+            body_text = tk.Text(sub, wrap="none", bg="#f6f9f8", fg=INK, font=MONO, padx=14, pady=12,
+                                relief="flat")
+            body_text.grid(row=1, column=0, sticky="nsew")
+            body_text.insert("1.0", body)
+            body_text.configure(state="disabled")
+            notebook.add(sub, text=title)
 
         text_tab("1  Raw CFG",
                  "The grammar as designed for the collected utterances. S is a whole utterance, "
