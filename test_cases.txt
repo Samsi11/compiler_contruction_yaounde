@@ -1,6 +1,0 @@
-# Valid and invalid examples for the prototype.
-Driver drop me for Bendskin junction
-Le manager a block mon sala
-Driver drop big sala
-Driver drop me and manager block you
-Driver drop me!

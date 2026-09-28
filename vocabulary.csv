@@ -1,51 +1,135 @@
-word,kind,lang
-drop,VERB,PDG
-block,VERB,EN
-take,VERB,EN
-hala,VERB,PDG
-dey,VERB,PDG
-waka,VERB,PDG
-sabi,VERB,PDG
-chop,VERB,PDG
-dash,VERB,PDG
-mimba,VERB,PDG
-driver,NOUN,EN
-manager,NOUN,EN
-junction,NOUN,EN
-sala,NOUN,PDG
-wahala,NOUN,PDG
-njangi,NOUN,PDG
-quartier,NOUN,FR
-tchop,NOUN,PDG
-gombo,NOUN,PDG
-chantier,NOUN,FR
-moto,NOUN,FR
-clando,NOUN,FR
-palabre,NOUN,FR
-me,PRON,EN
-you,PRON,EN
-je,PRON,FR
-il,PRON,FR
-for,PREP,EN
-at,PREP,EN
-avec,PREP,FR
-a,AUX,FR
-an,DET,EN
-the,DET,EN
-my,DET,EN
-mon,DET,FR
-ma,DET,FR
-le,DET,FR
-la,DET,FR
-and,CONJ,EN
-but,CONJ,EN
-et,CONJ,FR
-mais,CONJ,FR
-big,ADJ,EN
-small,ADJ,EN
-fast,ADJ,EN
-bendskin,SLANG,PDG
-hmmm,SLANG,PDG
-garrr,SLANG,PDG
-ekiee,SLANG,PDG
-wanda,SLANG,PDG
+word,kind,lang,concept,note
+fou,VERB,FR,LEAVE,
+enlève,VERB,FR,,
+gère,VERB,FR,TRANSFER,
+joue,VERB,FR,,
+fait,VERB,FR,,
+venez,VERB,FR,,
+tromper,VERB,FR,,
+montrer,VERB,FR,,
+fair,VERB,FR,,"Spelled 'fair' in the data; read as French 'faire' (do)."
+enter,VERB,EN,,
+drop,VERB,EN,TRANSFER,
+send,VERB,EN,TRANSFER,
+fund,VERB,EN,TRANSFER,
+get,VERB,EN,,
+see,VERB,EN,,
+find,VERB,EN,,
+worry,VERB,EN,,
+go,VERB,EN,,
+lef,VERB,PDG,LEAVE,
+levam,VERB,PDG,LEAVE,"'leave am' written as one word."
+momo,VERB,PDG,TRANSFER,"Used as a verb: send mobile money."
+chop,VERB,PDG,,"Also used as a noun ('food') in some utterances; tagged VERB here."
+cam,VERB,PDG,,
+dey,VERB,PDG,,"Also used as a locative 'there' in some utterances."
+camp,NOUN,FR,,
+brouette,NOUN,FR,,
+route,NOUN,FR,,
+argent,NOUN,FR,MONEY,
+pays,NOUN,FR,,
+réseau,NOUN,FR,NETWORK,
+om,NOUN,FR,,"Orange Money."
+nouriture,NOUN,FR,FOOD,"Spelling of 'nourriture' as written."
+carburant,NOUN,FR,FUEL,
+pater,NOUN,FR,,
+house,NOUN,EN,,
+account,NOUN,EN,ACCOUNT,
+luck,NOUN,EN,,
+rain,NOUN,EN,,
+network,NOUN,EN,NETWORK,
+mtn,NOUN,EN,,
+orange,NOUN,EN,,
+price,NOUN,EN,,
+market,NOUN,EN,,
+eneo,NOUN,EN,,
+e.n.e.o,NOUN,EN,,"Written with full stops in the data."
+socadel,NOUN,EN,,
+light,NOUN,EN,,
+rice,NOUN,EN,,
+weather,NOUN,EN,,
+petrol,NOUN,EN,FUEL,
+pole,NOUN,PDG,,"'single pole' = single people."
+grind,NOUN,PDG,FOOD,
+achombo,NOUN,SLG,,
+nkap,NOUN,SLG,MONEY,
+majumbum,NOUN,SLG,MONEY,
+fapnkolo,NOUN,SLG,MONEY,"An amount of money (glossed '5000frs')."
+pongos,NOUN,SLG,MONEY,"A unit of 1000 francs."
+pongo,NOUN,SLG,MONEY,
+aza,NOUN,SLG,ACCOUNT,
+motomoto,NOUN,SLG,,
+i,PRON,EN,,
+you,PRON,EN,,
+me,PRON,EN,,
+yu,PRON,PDG,,
+u,PRON,PDG,,
+a,PRON,PDG,,"Pidgin 'I'."
+moi,PRON,FR,,
+il,PRON,FR,,
+nous,PRON,FR,,
+le,DET,FR,,
+la,DET,FR,,"Also used postposed as 'là' (there); tagged DET."
+ta,DET,FR,,
+ton,DET,FR,,
+mon,DET,FR,,
+tous,DET,FR,,
+my,DET,EN,,
+that,DET,EN,,
+this,DET,EN,,
+some,DET,EN,,
+which,DET,EN,,
+small,ADJ,EN,,
+poor,ADJ,EN,WEAK_SERVICE,
+bad,ADJ,EN,,
+single,ADJ,EN,,
+last,ADJ,EN,,
+short,ADJ,EN,,
+froid,ADJ,FR,,
+chère,ADJ,FR,EXPENSIVE,
+serios,ADJ,PDG,,"Spelling of 'serious' as written."
+craze,ADJ,PDG,WEAK_SERVICE,
+deer,ADJ,PDG,EXPENSIVE,"Spelling of 'dear' (expensive) as written."
+nkangian,ADJ,SLG,WEAK_SERVICE,
+dja,ADJ,UNK,,"Tag inferred from the contributor's gloss ('nice')."
+how,ADV,EN,,
+so,ADV,EN,,
+too,ADV,EN,,
+offline,ADV,EN,,
+back,ADV,EN,,
+over,ADV,EN,,
+vite,ADV,FR,,
+longtemps,ADV,FR,,
+ci,ADV,FR,,
+do,AUX,PDG,,
+don,AUX,PDG,,
+di,AUX,PDG,,
+fit,AUX,PDG,,
+va,AUX,FR,,
+na,COP,PDG,,
+est,COP,FR,,
+si,COP,UNK,,"Tag inferred from the contributor's gloss ('is')."
+no,NEG,PDG,,
+pas,NEG,FR,,
+non,NEG,FR,,
+ne,NEG_PRE,FR,,
+for,PREP,EN,,
+avec,PREP,FR,,
+sur,PREP,FR,,
+au,PREP,FR,,
+depuis,PREP,FR,,
+make,CONJ,PDG,,
+and,CONJ,EN,,
+et,CONJ,FR,,
+two,NUM,EN,,
+four,NUM,EN,,
+twenty,NUM,EN,,
+salo,SLANG,SLG,,
+massa,SLANG,SLG,,
+massah,SLANG,SLG,,
+yehum,SLANG,SLG,,
+ndon ya,SLANG,SLG,,"Two-word exclamation."
+ei,SLANG,PDG,,
+abeg,SLANG,PDG,,
+nor,PART,PDG,,
+eh,PART,PDG,,

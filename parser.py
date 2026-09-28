@@ -1,16 +1,21 @@
-"""Table-driven LL(1) parser for Yaounde urban-language phrases.
+"""Table-driven LL(1) parser for Yaounde urban-language utterances.
 
-Unlike a hand-rolled recursive matcher, this parser is a literal
-implementation of the stack-based LL(1) algorithm: at each step it looks up
-``grammar.TABLE[(top_of_stack, next_input_symbol)]`` to decide which
-production to expand, exactly as described in the compiler-construction
-rubric ("build an LL(1) parsing table" / "implement a simple parser that
-reads tokenized input").
+A literal implementation of the stack-based LL(1) algorithm: at each step it
+looks up ``grammar.TABLE[(top_of_stack, next_input_symbol)]`` to decide which
+production to expand, and matches terminals against the token kinds produced
+by the lexer.
 """
 
 from dataclasses import dataclass, field
 
-from grammar import EPSILON, END_MARKER, LL1_GRAMMAR, START_SYMBOL, TABLE
+from grammar import (
+    END_MARKER,
+    EPSILON,
+    LL1_GRAMMAR,
+    START_SYMBOL,
+    TABLE,
+    expected_terminals,
+)
 from lexer import Token
 
 
@@ -26,23 +31,39 @@ class ParseResult:
     accepted: bool
     message: str
     trace: list[ParseStep] = field(default_factory=list)
+    error_token: Token | None = None
 
 
-def _find_invalid(tokens: list[Token]) -> Token | None:
-    return next((token for token in tokens if token.kind == "INVALID"), None)
+def _describe(token: Token) -> str:
+    if token.kind == "INVALID":
+        return "invalid character"
+    if token.kind == "WORD":
+        return "unknown word, not in the vocabulary"
+    return f"unexpected {token.kind}"
+
+
+def _reject(tokens: list[Token], position: int, expected: list[str], trace: list[ParseStep]) -> ParseResult:
+    expected_text = ", ".join(expected)
+    if position >= len(tokens):
+        return ParseResult(
+            False,
+            f"Syntax Error at end of input (expected one of: {expected_text}) [Rejected]",
+            trace,
+        )
+    token = tokens[position]
+    return ParseResult(
+        False,
+        f"Syntax Error near token '{token.value}' ({_describe(token)}; "
+        f"expected one of: {expected_text}) [Rejected]",
+        trace,
+        token,
+    )
 
 
 def parse(tokens: list[Token]) -> ParseResult:
     """Run the LL(1) table-driven algorithm and report the first error."""
     if not tokens:
         return ParseResult(False, "Syntax Error: empty input [Rejected]")
-
-    invalid = _find_invalid(tokens)
-    if invalid is not None:
-        return ParseResult(
-            False,
-            f"Syntax Error near token '{invalid.value}' (invalid character) [Rejected]",
-        )
 
     input_symbols = [token.kind for token in tokens] + [END_MARKER]
     stack: list[str] = [END_MARKER, START_SYMBOL]
@@ -59,34 +80,22 @@ def parse(tokens: list[Token]) -> ParseResult:
             return ParseResult(True, "Syntax Valid (Accepted by CFG)", trace)
 
         if top not in LL1_GRAMMAR:
-            # Top of stack is a terminal (or $): it must match the input.
             if top == current:
                 trace[-1].action = f"match {top}"
                 stack.pop()
                 position += 1
-            else:
-                token = tokens[min(position, len(tokens) - 1)]
-                return ParseResult(
-                    False,
-                    f"Syntax Error near token '{token.value}' (expected {top}, "
-                    f"found {current}) [Rejected]",
-                    trace,
-                )
-            continue
+                continue
+            trace[-1].action = "error"
+            return _reject(tokens, position, [top], trace)
 
-        key = (top, current)
-        if key not in TABLE:
-            token = tokens[min(position, len(tokens) - 1)]
-            return ParseResult(
-                False,
-                f"Syntax Error near token '{token.value}' (does not match the CFG) [Rejected]",
-                trace,
-            )
+        production = TABLE.get((top, current))
+        if production is None:
+            trace[-1].action = "error"
+            return _reject(tokens, position, expected_terminals(top), trace)
 
-        production = TABLE[key]
         trace[-1].action = f"{top} -> {' '.join(production) if production else EPSILON}"
         stack.pop()
         for symbol in reversed(production):
             stack.append(symbol)
 
-    return ParseResult(False, "Syntax Error: parser stack exhausted [Rejected]")
+    return ParseResult(False, "Syntax Error: parser stack exhausted [Rejected]", trace)

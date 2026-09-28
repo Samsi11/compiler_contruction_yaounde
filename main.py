@@ -1,11 +1,16 @@
-"""Command-line entry point for the Yaounde Urban Language Analyzer."""
+"""Command-line entry point for the Yaounde Urban Language Analyzer.
+
+    python main.py                 parse every collected utterance, then prompt
+    python main.py --grammar       also print the grammar pipeline and LL(1) table
+    python main.py --stats         also print token frequency / variation statistics
+    python main.py --all           both of the above
+    python main.py --no-interactive  skip the final prompt
+"""
 
 import sys
-from pathlib import Path
-
-sys.stdout.reconfigure(encoding="utf-8")
 
 from analysis import analyze_corpus, format_report
+from corpus import gloss_for, load_corpus, test_entries
 from grammar import (
     FIRST,
     FOLLOW,
@@ -20,62 +25,31 @@ from grammar import (
 from lexer import tokenize
 from parser import parse
 
-
-BASE_DIR = Path(__file__).resolve().parent
-
-
-PLAIN_WORDS = {
-    "drop": "take",
-    "block": "stop",
-    "take": "take",
-    "for": "to",
-    "at": "at",
-    "me": "me",
-    "you": "you",
-    "driver": "driver",
-    "manager": "manager",
-    "junction": "junction",
-    "sala": "work",
-    "bendskin": "motorcycle taxi",
-    "mon": "my",
-    "ma": "my",
-    "le": "the",
-}
+sys.stdout.reconfigure(encoding="utf-8")
 
 
-def translate_to_plain_language(sentence: str) -> str:
-    """Provide a readable English interpretation for recognized words."""
-    words = sentence.split()
-    translated = [PLAIN_WORDS.get(word.lower(), word) for word in words]
-    result = " ".join(translated).lower()
-    result = result.replace("motorcycle taxi junction", "the motorcycle taxi stop")
-    result = result.replace("driver take me", "driver, take me")
-    result = result.replace("the manager a stop my work", "the manager has stopped my work")
-    return result[:1].upper() + result[1:] + ("." if result else "")
-
-
-def analyze(sentence: str) -> None:
+def analyze(sentence: str) -> bool:
+    """Print tokens and the parse verdict; return True if accepted."""
     tokens = tokenize(sentence)
-    token_rows = [(t.value, t.kind, t.lang) for t in tokens]
     result = parse(tokens)
-    print(f"  Tokens: {token_rows}")
+    print(f"  Tokens: {[(t.value, t.kind, t.lang) for t in tokens]}")
     print(f"  Result: {result.message}")
-    if result.accepted:
-        print(f"  Plain language: {translate_to_plain_language(sentence)}")
-    else:
-        print("  Plain language: Unable to translate an invalid phrase.")
+    gloss = gloss_for(sentence)
+    if gloss:
+        print(f"  Contributor's translation: {gloss}")
+    return result.accepted
 
 
 def print_grammar_pipeline() -> None:
     print("=== Grammar pipeline ===")
     print()
-    print("1. Raw CFG (as derived from collected sentence patterns):")
+    print("1. Raw CFG (as derived from the collected utterance patterns):")
     print(format_grammar(RAW_GRAMMAR))
     print()
-    print("2. After left-recursion elimination:")
+    print("2. After left-recursion elimination (UTT, ADJP, NBAR were left-recursive):")
     print(format_grammar(NO_LEFT_RECURSION_GRAMMAR))
     print()
-    print("3. After left-factoring (LL(1)-ready grammar):")
+    print("3. After left-factoring (CLAUSE, COMP, NBAR shared prefixes):")
     print(format_grammar(LL1_GRAMMAR))
     print()
     print("4. FIRST sets:")
@@ -89,11 +63,33 @@ def print_grammar_pipeline() -> None:
     print()
 
 
-def print_corpus_stats(sentences: list[str]) -> None:
+def print_corpus_stats() -> None:
     print("=== Token frequency & variation analysis ===")
     print()
-    report = analyze_corpus(sentences)
-    print(format_report(report))
+    print(format_report(analyze_corpus(test_entries())))
+    print()
+
+
+def run_corpus() -> None:
+    entries = test_entries()
+    print(f"=== Parsing {len(entries)} collected utterances ===")
+    print()
+    accepted = mismatches = 0
+    for entry in entries:
+        print(f"{entry.id} [{entry.topic}, {entry.contributor}]: '{entry.text}'")
+        ok = analyze(entry.text)
+        accepted += ok
+        verdict = "ACCEPT" if ok else "REJECT"
+        if verdict != entry.expected:
+            mismatches += 1
+            print(f"  !! expected {entry.expected} but got {verdict}")
+        elif entry.note:
+            print(f"  Note: {entry.note}")
+        print()
+    excluded = len(load_corpus()) - len(entries)
+    print(f"Accepted {accepted}, rejected {len(entries) - accepted} "
+          f"(of {len(entries)} parsed; {excluded} unusable form entries excluded); "
+          f"{mismatches} differ from the expected label.")
     print()
 
 
@@ -113,27 +109,16 @@ def interactive_mode() -> None:
 
 
 def main() -> None:
+    args = set(sys.argv[1:])
     print("=== Yaounde Urban Language Analyzer ===")
     print()
-
-    test_file = BASE_DIR / "test_cases.txt"
-    sentences = [
-        line.strip()
-        for line in test_file.read_text(encoding="utf-8").splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
-    ]
-
-    print_grammar_pipeline()
-    print_corpus_stats(sentences)
-
-    print("=== Parsing test cases ===")
-    print()
-    for number, sentence in enumerate(sentences, start=1):
-        print(f"Test Case {number}: '{sentence}'")
-        analyze(sentence)
-        print()
-
-    interactive_mode()
+    if args & {"--grammar", "--all"}:
+        print_grammar_pipeline()
+    if args & {"--stats", "--all"}:
+        print_corpus_stats()
+    run_corpus()
+    if "--no-interactive" not in args:
+        interactive_mode()
 
 
 if __name__ == "__main__":

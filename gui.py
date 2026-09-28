@@ -4,8 +4,8 @@ import tkinter as tk
 from tkinter import ttk
 
 from grammar import FIRST, FOLLOW, LL1_GRAMMAR, RAW_GRAMMAR, TABLE, format_grammar, format_sets, format_table
+from corpus import gloss_for, test_entries
 from lexer import tokenize
-from main import BASE_DIR, translate_to_plain_language
 from parser import parse
 
 
@@ -87,8 +87,7 @@ class AnalyzerWindow:
         tk.Label(examples_panel, text="Select a phrase to load it into the editor.",
                  bg=SURFACE, fg=MUTED, font=("Segoe UI", 10),
                  wraplength=280, justify="left").grid(row=1, column=0, sticky="w", pady=(8, 15))
-        samples = [line.strip() for line in (BASE_DIR / "test_cases.txt").read_text(
-            encoding="utf-8").splitlines() if line.strip() and not line.lstrip().startswith("#")]
+        samples = [entry.text for entry in test_entries()]
         self.example = ttk.Combobox(examples_panel, values=samples, state="readonly",
                                     style="Examples.TCombobox", font=("Segoe UI", 10))
         self.example.grid(row=2, column=0, sticky="ew")
@@ -198,8 +197,9 @@ class AnalyzerWindow:
         self.status.configure(text="Accepted" if result.accepted else "Rejected",
                               fg=ACCENT if result.accepted else "#a44237")
         self.detail.configure(text=result.message)
-        if result.accepted:
-            self.translation.configure(text=f"Plain language   {translate_to_plain_language(sentence)}")
+        gloss = gloss_for(sentence)
+        if gloss:
+            self.translation.configure(text=f"Contributor's translation   {gloss}")
             self.translation.grid()
         else:
             self.translation.grid_remove()

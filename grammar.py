@@ -5,7 +5,8 @@ a plain CFG dictionary (not hand-derived for one specific grammar).
 A grammar is represented as ``dict[nonterminal, tuple[production, ...]]``
 where each production is a tuple of symbols, and an empty tuple ``()``
 denotes an epsilon production. A symbol is a nonterminal iff it is a key of
-the grammar dict; anything else is treated as a terminal.
+the grammar dict; anything else is treated as a terminal (a token kind
+produced by the lexer).
 """
 
 from collections import defaultdict
@@ -14,30 +15,70 @@ START_SYMBOL = "S"
 EPSILON = "ε"
 END_MARKER = "$"
 
-# The raw grammar, as originally derived from the collected sentence
-# patterns (before any transformation). NP/VP/PP are already
-# non-left-recursive; S is not left-factored (see below).
+# The raw grammar, written the natural way for the collected utterances
+# (before any transformation). Nonterminals are listed top-down so that the
+# left-recursion algorithm needs no substitution steps.
+#
+#   S      utterance: optional leading exclamation, clauses, optional tail
+#   UTT    clauses chained by a conjunction (left-recursive on purpose)
+#   CLAUSE subject + predicate, a bare noun phrase, an imperative, or a
+#          subjectless copular/adverbial fragment
+#   PRED   verb phrase | copula + complement | aspect AUX + ... | NEG + ...
+#   VP     French ne...pas negation or a plain verb, then objects/adverbs/PPs
+#   NBAR   noun compounds (left-recursive), adjectives and numerals
+#   TAIL   sentence-final particle or exclamation, then optional '?'
 RAW_GRAMMAR: dict[str, tuple[tuple[str, ...], ...]] = {
-    "S": (
-        ("NP", "VP"),
-        ("NP", "VP", "CONJ", "S"),
+    "S": (("LEAD", "UTT", "TAIL"),),
+    "LEAD": (("SLANG",), ()),
+    "UTT": (
+        ("UTT", "CONJ", "CLAUSE"),
+        ("CONJ", "CLAUSE"),
+        ("CLAUSE",),
     ),
-    "NP": (
-        ("NOUN",),
-        ("PRON",),
-        ("PRON", "NOUN"),
-        ("DET", "NOUN"),
-        ("DET", "ADJ", "NOUN"),
-        ("ADJ", "NOUN"),
-        ("SLANG", "NOUN"),
+    "CLAUSE": (
+        ("NP", "PRED"),
+        ("NP",),
+        ("VP",),
+        ("COP", "COMP"),
+        ("ADV", "ADJP"),
     ),
+    "PRED": (
+        ("VP",),
+        ("COP", "COMP"),
+        ("AUX", "AUXC"),
+        ("NEG", "NEGC"),
+        ("ADJP",),
+    ),
+    "AUXC": (("ADJP",), ("VP",)),
+    "NEGC": (("ADJP",), ("VP",)),
+    "COMP": (("ADJP",), ("ADV",), ("ADV", "ADJP")),
+    "ADJP": (("ADJP", "ADJ"), ("ADJ",)),
     "VP": (
-        ("VERB", "NP"),
-        ("VERB", "NP", "PP"),
-        ("VERB", "NP", "PP", "PP"),
-        ("AUX", "VERB", "NP"),
+        ("NEG_PRE", "VERB", "NEG", "VP1"),
+        ("VERB", "VP1"),
     ),
+    "VP1": (
+        ("PRON", "VPOBJ"),
+        ("NPN", "VP2"),
+        ("PP", "VP2"),
+        ("ADV", "VP2"),
+        (),
+    ),
+    "VPOBJ": (("NP", "VP2"), ("VP2",)),
+    "VP2": (("PP", "VP2"), ()),
     "PP": (("PREP", "NP"),),
+    "NP": (("PRON",), ("NPN",)),
+    "NPN": (("DET", "NBAR"), ("NBAR",)),
+    "NBAR": (
+        ("NBAR", "NOUN"),
+        ("NOUN",),
+        ("ADJ", "NOUN"),
+        ("ADJ", "NUM"),
+        ("NUM",),
+    ),
+    "TAIL": (("TAILW", "QM"),),
+    "TAILW": (("PART",), ("SLANG",), ()),
+    "QM": (("QMARK",), ()),
 }
 
 
@@ -223,6 +264,16 @@ LL1_GRAMMAR = left_factor(NO_LEFT_RECURSION_GRAMMAR)
 FIRST = compute_first_sets(LL1_GRAMMAR)
 FOLLOW = compute_follow_sets(LL1_GRAMMAR, FIRST, START_SYMBOL)
 TABLE = build_ll1_table(LL1_GRAMMAR, FIRST, FOLLOW)
+
+TERMINALS = sorted(
+    {symbol for prods in LL1_GRAMMAR.values() for prod in prods for symbol in prod}
+    - set(LL1_GRAMMAR)
+)
+
+
+def expected_terminals(nonterminal: str) -> list[str]:
+    """Terminals with a table entry for this nonterminal (what it accepts next)."""
+    return sorted(terminal for (nt, terminal) in TABLE if nt == nonterminal)
 
 
 def format_grammar(grammar: dict[str, tuple[tuple[str, ...], ...]]) -> str:
